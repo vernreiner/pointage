@@ -1,0 +1,1532 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Pointage">
+<meta name="theme-color" content="#172E4E">
+<link rel="manifest" href="./manifest.json">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<title>Pointage 15 min</title>
+<style>
+:root {
+  --navy: #172E4E;
+  --navy-900: #0E161E;
+  --navy-700: #122234;
+  --navy-300: #5087C1;
+  --navy-100: #E0E9F6;
+  --red: #B51820;
+  --red-700: #941122;
+  --carbon: #1A1A1A;
+  --titanium: #6A8F9C;
+  --nickel: #B1C2CA;
+  --chrome: #E7ECEF;
+  --white-smoke: #F3F5F7;
+  --bg: #F3F5F7;
+  --surface: #FFFFFF;
+  --text: #1A1A1A;
+  --text-muted: #6A8F9C;
+  --border: #E7ECEF;
+  --shadow: 0 1px 2px rgba(23,46,78,.04), 0 4px 16px rgba(23,46,78,.06);
+  color-scheme: light;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0E161E;
+    --surface: #122234;
+    --text: #F3F5F7;
+    --text-muted: #B1C2CA;
+    --border: #1F3550;
+    --chrome: #1F3550;
+    --white-smoke: #122234;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 4px 16px rgba(0,0,0,.3);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0E161E;
+  --surface: #122234;
+  --text: #F3F5F7;
+  --text-muted: #B1C2CA;
+  --border: #1F3550;
+  --chrome: #1F3550;
+  --white-smoke: #122234;
+  --shadow: 0 1px 2px rgba(0,0,0,.4), 0 4px 16px rgba(0,0,0,.3);
+  color-scheme: dark;
+}
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; height: 100%; }
+body {
+  font-family: 'Work Sans', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  font-size: 15px;
+  line-height: 1.5;
+  overscroll-behavior-y: contain;
+}
+button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+input, select, textarea { font-family: inherit; }
+
+/* Fixed-top safe area paint */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0 0 auto;
+  height: env(safe-area-inset-top, 0px);
+  background: var(--navy);
+  z-index: 100;
+}
+
+/* Header */
+.app-header {
+  position: sticky;
+  top: env(safe-area-inset-top, 0px);
+  background: var(--navy);
+  color: white;
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 10;
+}
+.app-header h1 {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+.app-header .clock {
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  font-size: 14px;
+  opacity: .9;
+}
+
+/* Tabs */
+.tabs {
+  display: flex;
+  background: var(--navy);
+  color: white;
+  position: sticky;
+  top: calc(env(safe-area-inset-top, 0px) + 45px);
+  z-index: 9;
+}
+.tab {
+  flex: 1;
+  padding: 11px 8px;
+  font-size: 13px;
+  font-weight: 500;
+  text-align: center;
+  color: rgba(255,255,255,.65);
+  border-bottom: 2px solid transparent;
+  transition: all .15s;
+}
+.tab.active {
+  color: white;
+  border-bottom-color: var(--red);
+}
+
+/* Main content */
+main {
+  padding: 20px 16px 100px;
+  max-width: 560px;
+  margin: 0 auto;
+}
+.view { display: none; }
+.view.active { display: block; }
+
+/* Current entry */
+.current {
+  background: var(--surface);
+  border-radius: 14px;
+  padding: 18px;
+  margin-bottom: 18px;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+}
+.current-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+  font-weight: 500;
+}
+.current-slot {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  font-size: 22px;
+  color: var(--navy);
+  letter-spacing: -0.02em;
+}
+[data-theme="dark"] .current-slot { color: var(--navy-300); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .current-slot { color: var(--navy-300); }
+}
+.current-active {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.current-active-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--red);
+  flex-shrink: 0;
+}
+.current-active-text {
+  font-size: 14px;
+  color: var(--text-muted);
+}
+.current-active-text strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* Section titles */
+.section-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin: 20px 0 10px;
+  letter-spacing: 0.02em;
+}
+.section-title:first-child { margin-top: 0; }
+
+/* Category grid — 1-tap buttons */
+.cat-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.cat-btn {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px 14px;
+  text-align: left;
+  min-height: 72px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  transition: transform .08s, box-shadow .15s;
+  position: relative;
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+.cat-btn:active {
+  transform: scale(0.97);
+}
+.cat-btn.last-used {
+  border-color: var(--red);
+  box-shadow: 0 0 0 2px rgba(181,24,32,.12);
+}
+.cat-btn-color {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: var(--navy);
+}
+.cat-btn-name {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text);
+  padding-left: 6px;
+}
+.cat-btn-master {
+  font-size: 11px;
+  color: var(--text-muted);
+  padding-left: 6px;
+}
+.cat-btn-add {
+  border: 1.5px dashed var(--nickel);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 500;
+  justify-content: center;
+  text-align: center;
+  align-items: center;
+}
+
+/* Today log */
+.log-list {
+  background: var(--surface);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+.log-item {
+  display: flex;
+  align-items: center;
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--border);
+  gap: 12px;
+}
+.log-item:last-child { border-bottom: none; }
+.log-time {
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  color: var(--text-muted);
+  min-width: 46px;
+  font-weight: 500;
+}
+.log-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--navy);
+}
+.log-label {
+  flex: 1;
+  font-size: 14px;
+}
+.log-master {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-left: 4px;
+}
+.log-del {
+  color: var(--text-muted);
+  padding: 4px 8px;
+  font-size: 14px;
+  opacity: 0;
+  transition: opacity .15s;
+}
+.log-item:hover .log-del { opacity: 1; }
+@media (hover: none) { .log-del { opacity: .5; } }
+
+.empty-state {
+  text-align: center;
+  padding: 36px 20px;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+/* Stats / dashboard */
+.stat-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+}
+.stat-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+.stat-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.stat-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.range-selector {
+  display: flex;
+  gap: 4px;
+  background: var(--chrome);
+  padding: 4px;
+  border-radius: 10px;
+  margin-bottom: 14px;
+}
+.range-btn {
+  flex: 1;
+  padding: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+  border-radius: 7px;
+  transition: all .15s;
+}
+.range-btn.active {
+  background: var(--surface);
+  color: var(--navy);
+  box-shadow: 0 1px 2px rgba(23,46,78,.08);
+}
+[data-theme="dark"] .range-btn.active { color: var(--navy-300); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .range-btn.active { color: var(--navy-300); }
+}
+
+/* Bar chart */
+.chart-container {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 14px;
+}
+.chart-title {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 14px;
+}
+.bar-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.bar-row:last-child { margin-bottom: 0; }
+.bar-label {
+  font-size: 13px;
+  min-width: 100px;
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bar-track {
+  flex: 1;
+  height: 22px;
+  background: var(--chrome);
+  border-radius: 6px;
+  overflow: hidden;
+  position: relative;
+}
+.bar-fill {
+  height: 100%;
+  background: var(--navy);
+  border-radius: 6px;
+  transition: width .3s ease;
+}
+.bar-value {
+  font-size: 12px;
+  font-weight: 600;
+  min-width: 60px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+
+/* Category manager */
+.cat-manage-item {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.cat-manage-swatch {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+.cat-manage-info {
+  flex: 1;
+  min-width: 0;
+}
+.cat-manage-name {
+  font-weight: 600;
+  font-size: 14px;
+}
+.cat-manage-master {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.icon-btn {
+  padding: 6px 10px;
+  color: var(--text-muted);
+  font-size: 18px;
+}
+
+/* Modal */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(14,22,30,.6);
+  display: none;
+  align-items: flex-end;
+  z-index: 200;
+  padding: 0;
+}
+.modal-backdrop.open {
+  display: flex;
+  animation: fadeIn .15s;
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.modal {
+  background: var(--surface);
+  width: 100%;
+  max-width: 560px;
+  margin: 0 auto;
+  border-radius: 20px 20px 0 0;
+  padding: 20px 20px calc(20px + env(safe-area-inset-bottom, 0px));
+  max-height: 85vh;
+  overflow-y: auto;
+  animation: slideUp .2s;
+}
+@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.modal-title { font-weight: 700; font-size: 17px; }
+.modal-close {
+  font-size: 22px;
+  color: var(--text-muted);
+  padding: 0 4px;
+  line-height: 1;
+}
+.form-group {
+  margin-bottom: 14px;
+}
+.form-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+.form-input, .form-select {
+  width: 100%;
+  padding: 11px 12px;
+  background: var(--white-smoke);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  font-size: 15px;
+  color: var(--text);
+  -webkit-appearance: none;
+  appearance: none;
+}
+.form-input:focus, .form-select:focus {
+  outline: none;
+  border-color: var(--navy-300);
+  background: var(--surface);
+}
+.color-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+}
+.color-swatch {
+  aspect-ratio: 1;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 3px solid transparent;
+  transition: transform .1s;
+}
+.color-swatch.selected {
+  border-color: var(--text);
+  transform: scale(1.05);
+}
+.btn-primary {
+  background: var(--navy);
+  color: white;
+  padding: 13px;
+  border-radius: 10px;
+  font-weight: 600;
+  width: 100%;
+  font-size: 15px;
+  transition: background .15s;
+}
+.btn-primary:active { background: var(--navy-700); }
+.btn-primary:disabled { background: var(--nickel); }
+.btn-secondary {
+  background: transparent;
+  color: var(--red);
+  padding: 13px;
+  border-radius: 10px;
+  font-weight: 500;
+  width: 100%;
+  font-size: 14px;
+  margin-top: 8px;
+}
+
+/* Settings */
+.setting-row {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.setting-info { flex: 1; min-width: 0; }
+.setting-name { font-weight: 600; font-size: 14px; }
+.setting-desc { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.toggle {
+  width: 44px;
+  height: 26px;
+  background: var(--nickel);
+  border-radius: 13px;
+  position: relative;
+  transition: background .2s;
+  flex-shrink: 0;
+}
+.toggle.on { background: var(--red); }
+.toggle::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  background: white;
+  border-radius: 50%;
+  transition: transform .2s;
+}
+.toggle.on::after { transform: translateX(18px); }
+
+.danger-zone {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+.btn-danger {
+  background: transparent;
+  color: var(--red);
+  border: 1px solid var(--red);
+  padding: 12px;
+  border-radius: 10px;
+  font-weight: 500;
+  width: 100%;
+  font-size: 14px;
+}
+
+/* Install hint */
+.install-hint {
+  background: var(--navy-100);
+  color: var(--navy);
+  border-radius: 10px;
+  padding: 12px;
+  font-size: 13px;
+  margin-bottom: 14px;
+  line-height: 1.5;
+}
+[data-theme="dark"] .install-hint { background: var(--navy-700); color: var(--navy-300); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .install-hint { background: var(--navy-700); color: var(--navy-300); }
+}
+
+/* Loading */
+.loading {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-muted);
+}
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <h1>Pointage 15 min</h1>
+  <span class="clock" id="clock">--:--</span>
+</header>
+
+<nav class="tabs">
+  <button class="tab active" data-view="track">Pointer</button>
+  <button class="tab" data-view="today">Journée</button>
+  <button class="tab" data-view="stats">Stats</button>
+  <button class="tab" data-view="settings">Réglages</button>
+</nav>
+
+<main>
+  <!-- Track view -->
+  <div class="view active" id="view-track">
+    <div class="current">
+      <div class="current-label">Créneau en cours</div>
+      <div class="current-slot" id="currentSlot">--:-- → --:--</div>
+      <div class="current-active" id="currentActive" style="display:none;">
+        <div class="current-active-dot"></div>
+        <div class="current-active-text" id="currentActiveText"></div>
+      </div>
+    </div>
+    <div class="section-title">Tape pour pointer</div>
+    <div class="cat-grid" id="catGrid"></div>
+  </div>
+
+  <!-- Today view -->
+  <div class="view" id="view-today">
+    <div class="section-title">Aujourd'hui — <span id="todayTotal">0h00</span></div>
+    <div class="log-list" id="todayLog"></div>
+  </div>
+
+  <!-- Stats view -->
+  <div class="view" id="view-stats">
+    <div class="range-selector">
+      <button class="range-btn active" data-range="today">Jour</button>
+      <button class="range-btn" data-range="week">Semaine</button>
+      <button class="range-btn" data-range="month">Mois</button>
+    </div>
+    <div class="stat-row">
+      <div class="stat-card">
+        <div class="stat-label">Temps tracké</div>
+        <div class="stat-value" id="statTotal">0h00</div>
+        <div class="stat-sub" id="statEntries">0 pointages</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Catégorie dominante</div>
+        <div class="stat-value" id="statTop" style="font-size:16px;">—</div>
+        <div class="stat-sub" id="statTopPct">—</div>
+      </div>
+    </div>
+    <div class="chart-container">
+      <div class="chart-title">Par catégorie maître</div>
+      <div id="chartMaster"></div>
+    </div>
+    <div class="chart-container">
+      <div class="chart-title">Détail par catégorie</div>
+      <div id="chartDetail"></div>
+    </div>
+  </div>
+
+  <!-- Settings view -->
+  <div class="view" id="view-settings">
+    <div class="install-hint" id="installHint" style="display:none;">
+      <strong>📲 Installe l'app sur ton écran d'accueil</strong><br>
+      Chrome : menu ⋮ → <strong>« Installer l'application »</strong><br><br>
+      Puis active les notifications avec le bouton ci-dessous.<br><br>
+      <strong>Important si tu rates des notifs :</strong><br>
+      Appui long sur l'icône → Infos → <strong>Batterie</strong> → <strong>Sans restriction</strong>.
+    </div>
+
+    <div class="section-title">Notifications</div>
+    <div class="setting-row">
+      <div class="setting-info">
+        <div class="setting-name">Rappel toutes les 15 min</div>
+        <div class="setting-desc" id="notifStatus">Désactivé</div>
+      </div>
+    </div>
+    <button type="button" class="btn-primary" id="toggleNotif" style="margin-bottom:10px;">Activer les notifications</button>
+
+    <div class="setting-row">
+      <div class="setting-info">
+        <div class="setting-name">Plage horaire</div>
+        <div class="setting-desc">Rappels uniquement entre</div>
+      </div>
+    </div>
+    <div class="setting-row" style="display:flex; gap:8px;">
+      <input type="time" class="form-input" id="notifStart" style="flex:1;">
+      <span style="color:var(--text-muted); align-self:center;">→</span>
+      <input type="time" class="form-input" id="notifEnd" style="flex:1;">
+    </div>
+    <div class="setting-row">
+      <div class="setting-info">
+        <div class="setting-name">Jours de la semaine uniquement</div>
+        <div class="setting-desc">Pas de rappel samedi/dimanche</div>
+      </div>
+      <button type="button" class="toggle-btn" id="toggleWeekdays" style="min-width:60px; padding:8px 14px; background:var(--chrome); border-radius:20px; font-weight:600; font-size:13px; color:var(--text-muted);">OFF</button>
+    </div>
+
+    <div class="section-title">Catégories maîtres</div>
+    <div id="mastersList"></div>
+    <button class="btn-primary" id="addMasterBtn" style="margin-top:8px;">+ Nouvelle catégorie maître</button>
+
+    <div class="section-title">Catégories détaillées</div>
+    <div id="catsList"></div>
+    <button class="btn-primary" id="addCatBtn" style="margin-top:8px;">+ Nouvelle catégorie</button>
+
+    <div class="danger-zone">
+      <div class="section-title">Export & données</div>
+      <button class="btn-primary" id="exportBtn" style="margin-bottom:8px;">Exporter en CSV</button>
+      <button class="btn-danger" id="resetBtn">Effacer toutes les données</button>
+    </div>
+  </div>
+</main>
+
+<!-- Category modal -->
+<div class="modal-backdrop" id="catModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="catModalTitle">Nouvelle catégorie</div>
+      <button class="modal-close" id="catModalClose">✕</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Nom</label>
+      <input type="text" class="form-input" id="catName" placeholder="Ex. : Coaching équipe, Devis, Mail…">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Catégorie maître</label>
+      <select class="form-select" id="catMaster"></select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Couleur</label>
+      <div class="color-grid" id="colorGrid"></div>
+    </div>
+    <button class="btn-primary" id="catSave">Enregistrer</button>
+    <button class="btn-secondary" id="catDelete" style="display:none;">Supprimer cette catégorie</button>
+  </div>
+</div>
+
+<!-- Master modal -->
+<div class="modal-backdrop" id="masterModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="masterModalTitle">Nouvelle catégorie maître</div>
+      <button class="modal-close" id="masterModalClose">✕</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Nom</label>
+      <input type="text" class="form-input" id="masterName" placeholder="Ex. : Management, Sales productif…">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Couleur</label>
+      <div class="color-grid" id="masterColorGrid"></div>
+    </div>
+    <button class="btn-primary" id="masterSave">Enregistrer</button>
+    <button class="btn-secondary" id="masterDelete" style="display:none;">Supprimer</button>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ============ STATE ============
+const COLORS = [
+  '#172E4E', '#B51820', '#6A8F9C', '#5087C1', '#941122', '#122234',
+  '#D97757', '#2E7D5B', '#8B5CF6', '#F59E0B', '#0E7490', '#64748B'
+];
+
+let state = {
+  masters: [],      // {id, name, color}
+  categories: [],   // {id, name, masterId, color}
+  entries: [],      // {id, ts, categoryId}  (ts = ISO slot-start of 15-min)
+  lastCategoryId: null,
+  notif: { enabled: false, start: '08:00', end: '19:00', weekdaysOnly: true }
+};
+
+let currentView = 'track';
+let currentRange = 'today';
+let editingCatId = null;
+let editingMasterId = null;
+let selectedColor = COLORS[0];
+let selectedMasterColor = COLORS[0];
+let notifTimer = null;
+
+// ============ STORAGE (localStorage, universel + offline) ============
+function lsGet(key) {
+  try {
+    const v = localStorage.getItem(key);
+    return v ? JSON.parse(v) : null;
+  } catch (e) { return null; }
+}
+function lsSet(key, value) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+    return true;
+  } catch (e) {
+    console.warn('localStorage set failed', e);
+    return false;
+  }
+}
+function lsDel(key) {
+  try { localStorage.removeItem(key); } catch(e) {}
+}
+
+async function loadState() {
+  try {
+    const m = lsGet('tt:masters');       if (m) state.masters = m;
+    const c = lsGet('tt:categories');    if (c) state.categories = c;
+    const e = lsGet('tt:entries');       if (e) state.entries = e;
+    const n = lsGet('tt:notif');         if (n) state.notif = { ...state.notif, ...n };
+    const l = lsGet('tt:lastCategoryId'); if (l) state.lastCategoryId = l;
+  } catch (e) {
+    console.warn('load failed, starting fresh', e);
+  }
+  // Seed defaults if empty
+  if (state.masters.length === 0) {
+    state.masters = [
+      { id: 'm1', name: 'Management', color: '#172E4E' },
+      { id: 'm2', name: 'Sales productif', color: '#B51820' },
+      { id: 'm3', name: 'Admin / Interne', color: '#6A8F9C' },
+      { id: 'm4', name: 'Autre', color: '#B1C2CA' }
+    ];
+    saveMasters();
+  }
+  if (state.categories.length === 0) {
+    state.categories = [
+      { id: 'c1', name: 'Coaching équipe', masterId: 'm1', color: '#172E4E' },
+      { id: 'c2', name: 'Réunion interne', masterId: 'm1', color: '#122234' },
+      { id: 'c3', name: 'RDV client', masterId: 'm2', color: '#B51820' },
+      { id: 'c4', name: 'Appel client / prospect', masterId: 'm2', color: '#941122' },
+      { id: 'c5', name: 'Devis / offre', masterId: 'm2', color: '#D97757' },
+      { id: 'c6', name: 'Email', masterId: 'm3', color: '#6A8F9C' },
+      { id: 'c7', name: 'Reporting / analyse', masterId: 'm3', color: '#5087C1' },
+      { id: 'c8', name: 'Pause / déjeuner', masterId: 'm4', color: '#B1C2CA' }
+    ];
+    saveCategories();
+  }
+}
+
+function saveMasters()    { lsSet('tt:masters', state.masters); }
+function saveCategories() { lsSet('tt:categories', state.categories); }
+function saveEntries()    { lsSet('tt:entries', state.entries); }
+function saveNotif()      { lsSet('tt:notif', state.notif); }
+function saveLastCat()    { lsSet('tt:lastCategoryId', state.lastCategoryId); }
+
+// ============ TIME HELPERS ============
+function slotStart(date = new Date()) {
+  const d = new Date(date);
+  d.setMinutes(Math.floor(d.getMinutes() / 15) * 15, 0, 0);
+  return d;
+}
+function fmtTime(d) {
+  const h = String(d.getHours()).padStart(2,'0');
+  const m = String(d.getMinutes()).padStart(2,'0');
+  return `${h}:${m}`;
+}
+function fmtDuration(min) {
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return h > 0 ? `${h}h${String(m).padStart(2,'0')}` : `${m} min`;
+}
+function slotKey(d) {
+  // ISO-like key for 15-min slot
+  const pad = n => String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+function parseSlotKey(k) {
+  return new Date(k);
+}
+
+// ============ POINTAGE ============
+async function logEntry(categoryId) {
+  const slot = slotStart();
+  const key = slotKey(slot);
+  // Replace entry for this slot if exists
+  state.entries = state.entries.filter(e => e.ts !== key);
+  state.entries.push({ id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()), ts: key, categoryId });
+  state.lastCategoryId = categoryId;
+  await saveEntries();
+  await saveLastCat();
+  render();
+  // Update SW config so next notif shows the right "last" category
+  if (state.notif.enabled) sendConfigToSW();
+  // Haptic feedback
+  if (navigator.vibrate) navigator.vibrate(10);
+}
+
+async function deleteEntry(id) {
+  state.entries = state.entries.filter(e => e.id !== id);
+  await saveEntries();
+  render();
+}
+
+// ============ RENDER ============
+function render() {
+  if (currentView === 'track') renderTrack();
+  else if (currentView === 'today') renderToday();
+  else if (currentView === 'stats') renderStats();
+  else if (currentView === 'settings') renderSettings();
+}
+
+function renderTrack() {
+  // Current slot
+  const slot = slotStart();
+  const next = new Date(slot.getTime() + 15*60000);
+  document.getElementById('currentSlot').textContent = `${fmtTime(slot)} → ${fmtTime(next)}`;
+  // Current active
+  const currentEntry = state.entries.find(e => e.ts === slotKey(slot));
+  const activeEl = document.getElementById('currentActive');
+  if (currentEntry) {
+    const cat = state.categories.find(c => c.id === currentEntry.categoryId);
+    if (cat) {
+      activeEl.style.display = 'flex';
+      const master = state.masters.find(m => m.id === cat.masterId);
+      document.getElementById('currentActiveText').innerHTML = `Pointé : <strong>${cat.name}</strong>${master ? ` · ${master.name}` : ''}`;
+      activeEl.querySelector('.current-active-dot').style.background = cat.color;
+    }
+  } else {
+    activeEl.style.display = 'none';
+  }
+  // Category grid — ordered: last used first, then by master order
+  const grid = document.getElementById('catGrid');
+  grid.innerHTML = '';
+  const ordered = [...state.categories].sort((a,b) => {
+    if (a.id === state.lastCategoryId) return -1;
+    if (b.id === state.lastCategoryId) return 1;
+    return 0;
+  });
+  for (const cat of ordered) {
+    const master = state.masters.find(m => m.id === cat.masterId);
+    const btn = document.createElement('button');
+    btn.className = 'cat-btn' + (cat.id === state.lastCategoryId ? ' last-used' : '');
+    btn.innerHTML = `
+      <div class="cat-btn-color" style="background:${cat.color}"></div>
+      <div class="cat-btn-name">${escapeHtml(cat.name)}</div>
+      <div class="cat-btn-master">${master ? escapeHtml(master.name) : ''}</div>
+    `;
+    btn.addEventListener('click', () => logEntry(cat.id));
+    grid.appendChild(btn);
+  }
+  // Add button
+  const addBtn = document.createElement('button');
+  addBtn.className = 'cat-btn cat-btn-add';
+  addBtn.innerHTML = `+ Ajouter une catégorie`;
+  addBtn.addEventListener('click', () => openCatModal());
+  grid.appendChild(addBtn);
+}
+
+function renderToday() {
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  const tomorrow = new Date(today.getTime() + 24*60*60000);
+  const todayEntries = state.entries
+    .filter(e => {
+      const d = parseSlotKey(e.ts);
+      return d >= today && d < tomorrow;
+    })
+    .sort((a,b) => b.ts.localeCompare(a.ts));
+  document.getElementById('todayTotal').textContent = fmtDuration(todayEntries.length * 15);
+  const log = document.getElementById('todayLog');
+  if (todayEntries.length === 0) {
+    log.innerHTML = `<div class="empty-state">Aucun pointage aujourd'hui.<br>Va dans l'onglet <strong>Pointer</strong>.</div>`;
+    return;
+  }
+  log.innerHTML = '';
+  for (const e of todayEntries) {
+    const cat = state.categories.find(c => c.id === e.categoryId);
+    if (!cat) continue;
+    const master = state.masters.find(m => m.id === cat.masterId);
+    const d = parseSlotKey(e.ts);
+    const item = document.createElement('div');
+    item.className = 'log-item';
+    item.innerHTML = `
+      <div class="log-time">${fmtTime(d)}</div>
+      <div class="log-dot" style="background:${cat.color}"></div>
+      <div class="log-label">${escapeHtml(cat.name)}<span class="log-master">· ${master ? escapeHtml(master.name) : ''}</span></div>
+      <button class="log-del" data-id="${e.id}">✕</button>
+    `;
+    item.querySelector('.log-del').addEventListener('click', () => {
+      if (confirm('Supprimer ce pointage ?')) deleteEntry(e.id);
+    });
+    log.appendChild(item);
+  }
+}
+
+function getRangeEntries(range) {
+  const now = new Date();
+  let start;
+  if (range === 'today') {
+    start = new Date(now);
+    start.setHours(0,0,0,0);
+  } else if (range === 'week') {
+    start = new Date(now);
+    const day = (start.getDay() + 6) % 7; // Monday = 0
+    start.setDate(start.getDate() - day);
+    start.setHours(0,0,0,0);
+  } else {
+    start = new Date(now.getFullYear(), now.getMonth(), 1);
+  }
+  return state.entries.filter(e => parseSlotKey(e.ts) >= start);
+}
+
+function renderStats() {
+  const entries = getRangeEntries(currentRange);
+  const totalMin = entries.length * 15;
+  document.getElementById('statTotal').textContent = fmtDuration(totalMin);
+  document.getElementById('statEntries').textContent = `${entries.length} pointages`;
+
+  // Aggregate by master
+  const byMaster = new Map();
+  const byCat = new Map();
+  for (const e of entries) {
+    const cat = state.categories.find(c => c.id === e.categoryId);
+    if (!cat) continue;
+    byCat.set(cat.id, (byCat.get(cat.id) || 0) + 15);
+    const mid = cat.masterId || 'none';
+    byMaster.set(mid, (byMaster.get(mid) || 0) + 15);
+  }
+
+  // Top master
+  let topMaster = null, topMasterMin = 0;
+  for (const [mid, min] of byMaster) {
+    if (min > topMasterMin) { topMasterMin = min; topMaster = state.masters.find(m => m.id === mid); }
+  }
+  if (topMaster && totalMin > 0) {
+    document.getElementById('statTop').textContent = topMaster.name;
+    document.getElementById('statTopPct').textContent = `${Math.round(topMasterMin/totalMin*100)}% du temps`;
+  } else {
+    document.getElementById('statTop').textContent = '—';
+    document.getElementById('statTopPct').textContent = '—';
+  }
+
+  // Master chart
+  renderBars('chartMaster',
+    [...byMaster.entries()]
+      .map(([mid, min]) => {
+        const m = state.masters.find(x => x.id === mid);
+        return { label: m ? m.name : 'Sans maître', color: m ? m.color : '#B1C2CA', value: min };
+      })
+      .sort((a,b) => b.value - a.value),
+    totalMin
+  );
+  // Detail chart
+  renderBars('chartDetail',
+    [...byCat.entries()]
+      .map(([cid, min]) => {
+        const c = state.categories.find(x => x.id === cid);
+        return { label: c ? c.name : '?', color: c ? c.color : '#B1C2CA', value: min };
+      })
+      .sort((a,b) => b.value - a.value),
+    totalMin
+  );
+}
+
+function renderBars(elId, rows, total) {
+  const el = document.getElementById(elId);
+  if (rows.length === 0 || total === 0) {
+    el.innerHTML = `<div class="empty-state" style="padding:20px;">Pas encore de données.</div>`;
+    return;
+  }
+  const max = Math.max(...rows.map(r => r.value));
+  el.innerHTML = rows.map(r => `
+    <div class="bar-row">
+      <div class="bar-label" title="${escapeHtml(r.label)}">${escapeHtml(r.label)}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${(r.value/max*100).toFixed(1)}%;background:${r.color}"></div></div>
+      <div class="bar-value">${fmtDuration(r.value)} · ${Math.round(r.value/total*100)}%</div>
+    </div>
+  `).join('');
+}
+
+function renderSettings() {
+ try {
+  // Notif button
+  const t = document.getElementById('toggleNotif');
+  if (t) {
+    if (state.notif.enabled) {
+      t.textContent = '🔕 Désactiver les notifications';
+      t.style.background = 'var(--titanium)';
+    } else {
+      t.textContent = '🔔 Activer les notifications';
+      t.style.background = '';
+    }
+  }
+  let perm = 'unsupported';
+  try { perm = ('Notification' in window) ? Notification.permission : 'unsupported'; } catch(e) {}
+  let status;
+  if (perm === 'unsupported') status = 'Notifications non supportées par ce navigateur';
+  else if (perm === 'denied') status = 'Autorisation refusée — change-la dans les réglages Android';
+  else if (state.notif.enabled) status = `Actif — rappel à chaque quart d'heure`;
+  else status = `Désactivé — tape sur le bouton ci-dessous`;
+  const ns = document.getElementById('notifStatus');
+  if (ns) ns.textContent = status;
+
+  const tw = document.getElementById('toggleWeekdays');
+  if (tw) {
+    if (state.notif.weekdaysOnly) {
+      tw.textContent = 'ON';
+      tw.style.background = 'var(--red)';
+      tw.style.color = 'white';
+    } else {
+      tw.textContent = 'OFF';
+      tw.style.background = 'var(--chrome)';
+      tw.style.color = 'var(--text-muted)';
+    }
+  }
+  const nStart = document.getElementById('notifStart');
+  if (nStart) nStart.value = state.notif.start;
+  const nEnd = document.getElementById('notifEnd');
+  if (nEnd) nEnd.value = state.notif.end;
+
+  // Install hint — show if not standalone
+  let standalone = false;
+  try {
+    standalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
+  } catch(e) {}
+  const ih = document.getElementById('installHint');
+  if (ih) ih.style.display = standalone ? 'none' : 'block';
+
+  // Masters
+  const ml = document.getElementById('mastersList');
+  ml.innerHTML = state.masters.map(m => `
+    <div class="cat-manage-item" data-id="${m.id}">
+      <div class="cat-manage-swatch" style="background:${m.color}"></div>
+      <div class="cat-manage-info">
+        <div class="cat-manage-name">${escapeHtml(m.name)}</div>
+        <div class="cat-manage-master">${state.categories.filter(c=>c.masterId===m.id).length} catégorie(s)</div>
+      </div>
+      <button class="icon-btn edit-master" data-id="${m.id}">✎</button>
+    </div>
+  `).join('');
+  ml.querySelectorAll('.edit-master').forEach(b =>
+    b.addEventListener('click', () => openMasterModal(b.dataset.id))
+  );
+
+  // Cats
+  const cl = document.getElementById('catsList');
+  cl.innerHTML = state.categories.map(c => {
+    const m = state.masters.find(x => x.id === c.masterId);
+    return `
+    <div class="cat-manage-item" data-id="${c.id}">
+      <div class="cat-manage-swatch" style="background:${c.color}"></div>
+      <div class="cat-manage-info">
+        <div class="cat-manage-name">${escapeHtml(c.name)}</div>
+        <div class="cat-manage-master">${m ? escapeHtml(m.name) : 'Sans maître'}</div>
+      </div>
+      <button class="icon-btn edit-cat" data-id="${c.id}">✎</button>
+    </div>`;
+  }).join('');
+  cl.querySelectorAll('.edit-cat').forEach(b =>
+    b.addEventListener('click', () => openCatModal(b.dataset.id))
+  );
+ } catch (err) {
+   console.error('renderSettings error:', err);
+ }
+}
+
+// ============ MODALS ============
+function openCatModal(id = null) {
+  editingCatId = id;
+  const cat = id ? state.categories.find(c => c.id === id) : null;
+  document.getElementById('catModalTitle').textContent = cat ? 'Modifier la catégorie' : 'Nouvelle catégorie';
+  document.getElementById('catName').value = cat ? cat.name : '';
+  const sel = document.getElementById('catMaster');
+  sel.innerHTML = state.masters.map(m => `<option value="${m.id}" ${cat && cat.masterId===m.id ? 'selected':''}>${escapeHtml(m.name)}</option>`).join('');
+  selectedColor = cat ? cat.color : COLORS[0];
+  renderColorGrid('colorGrid', selectedColor, c => selectedColor = c);
+  document.getElementById('catDelete').style.display = cat ? 'block' : 'none';
+  document.getElementById('catModal').classList.add('open');
+}
+function closeCatModal() { document.getElementById('catModal').classList.remove('open'); }
+
+function openMasterModal(id = null) {
+  editingMasterId = id;
+  const m = id ? state.masters.find(x => x.id === id) : null;
+  document.getElementById('masterModalTitle').textContent = m ? 'Modifier la catégorie maître' : 'Nouvelle catégorie maître';
+  document.getElementById('masterName').value = m ? m.name : '';
+  selectedMasterColor = m ? m.color : COLORS[0];
+  renderColorGrid('masterColorGrid', selectedMasterColor, c => selectedMasterColor = c);
+  document.getElementById('masterDelete').style.display = m ? 'block' : 'none';
+  document.getElementById('masterModal').classList.add('open');
+}
+function closeMasterModal() { document.getElementById('masterModal').classList.remove('open'); }
+
+function renderColorGrid(elId, selected, onPick) {
+  const el = document.getElementById(elId);
+  el.innerHTML = COLORS.map(c =>
+    `<div class="color-swatch${c === selected ? ' selected' : ''}" data-color="${c}" style="background:${c}"></div>`
+  ).join('');
+  el.querySelectorAll('.color-swatch').forEach(s =>
+    s.addEventListener('click', () => {
+      el.querySelectorAll('.color-swatch').forEach(x => x.classList.remove('selected'));
+      s.classList.add('selected');
+      onPick(s.dataset.color);
+    })
+  );
+}
+
+async function saveCatFromModal() {
+  const name = document.getElementById('catName').value.trim();
+  const masterId = document.getElementById('catMaster').value;
+  if (!name) return;
+  if (editingCatId) {
+    const c = state.categories.find(x => x.id === editingCatId);
+    if (c) { c.name = name; c.masterId = masterId; c.color = selectedColor; }
+  } else {
+    state.categories.push({ id: 'c' + Date.now(), name, masterId, color: selectedColor });
+  }
+  await saveCategories();
+  closeCatModal();
+  render();
+}
+
+async function deleteCatFromModal() {
+  if (!editingCatId) return;
+  const hasEntries = state.entries.some(e => e.categoryId === editingCatId);
+  if (hasEntries && !confirm('Des pointages utilisent cette catégorie. Supprimer quand même ? Les pointages seront aussi effacés.')) return;
+  state.categories = state.categories.filter(c => c.id !== editingCatId);
+  state.entries = state.entries.filter(e => e.categoryId !== editingCatId);
+  if (state.lastCategoryId === editingCatId) state.lastCategoryId = null;
+  await saveCategories();
+  await saveEntries();
+  await saveLastCat();
+  closeCatModal();
+  render();
+}
+
+async function saveMasterFromModal() {
+  const name = document.getElementById('masterName').value.trim();
+  if (!name) return;
+  if (editingMasterId) {
+    const m = state.masters.find(x => x.id === editingMasterId);
+    if (m) { m.name = name; m.color = selectedMasterColor; }
+  } else {
+    state.masters.push({ id: 'm' + Date.now(), name, color: selectedMasterColor });
+  }
+  await saveMasters();
+  closeMasterModal();
+  render();
+}
+
+async function deleteMasterFromModal() {
+  if (!editingMasterId) return;
+  const usedBy = state.categories.filter(c => c.masterId === editingMasterId);
+  if (usedBy.length > 0) {
+    alert(`Impossible : ${usedBy.length} catégorie(s) utilisent ce maître. Change-les d'abord.`);
+    return;
+  }
+  state.masters = state.masters.filter(m => m.id !== editingMasterId);
+  await saveMasters();
+  closeMasterModal();
+  render();
+}
+
+// ============ NOTIFICATIONS (Service Worker) ============
+let swReg = null;
+
+async function registerSW() {
+  if (!('serviceWorker' in navigator)) return null;
+  try {
+    swReg = await navigator.serviceWorker.register('./sw.js', { scope: './' });
+    await navigator.serviceWorker.ready;
+    return swReg;
+  } catch (e) {
+    console.warn('SW register failed', e);
+    return null;
+  }
+}
+
+function sendConfigToSW() {
+  const lastCat = state.lastCategoryId ? state.categories.find(c => c.id === state.lastCategoryId) : null;
+  const cfg = {
+    enabled: state.notif.enabled,
+    start: state.notif.start,
+    end: state.notif.end,
+    weekdaysOnly: state.notif.weekdaysOnly,
+    lastCategoryName: lastCat ? lastCat.name : null
+  };
+  if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+    navigator.serviceWorker.controller.postMessage({ type: 'CONFIG', config: cfg });
+  } else if (swReg && swReg.active) {
+    swReg.active.postMessage({ type: 'CONFIG', config: cfg });
+  }
+}
+
+async function toggleNotifications() {
+  // Désactivation
+  if (state.notif.enabled) {
+    state.notif.enabled = false;
+    saveNotif();
+    sendConfigToSW();
+    render();
+    return;
+  }
+  // Activation
+  if (!('Notification' in window)) {
+    alert('Ce navigateur ne supporte pas les notifications.');
+    return;
+  }
+  if (!('serviceWorker' in navigator)) {
+    alert('Ce navigateur ne supporte pas les Service Workers.\n\nUtilise Chrome ou Firefox récent.');
+    return;
+  }
+  let perm = Notification.permission;
+  if (perm === 'default') {
+    try {
+      perm = await Notification.requestPermission();
+    } catch (e) {
+      alert('Erreur permission : ' + (e.message || e));
+      return;
+    }
+  }
+  if (perm !== 'granted') {
+    alert('Autorisation refusée.\n\nRéactive-la :\nParamètres Android → Applications → Pointage 15 min → Notifications → Autoriser');
+    render();
+    return;
+  }
+  // Enregistrer le SW si pas déjà fait
+  if (!swReg) {
+    swReg = await registerSW();
+    if (!swReg) {
+      alert('Impossible d\'enregistrer le Service Worker. Vérifie que tu es bien sur une URL en https://');
+      return;
+    }
+  }
+  state.notif.enabled = true;
+  saveNotif();
+  sendConfigToSW();
+  render();
+  // Notif de test via le SW
+  try {
+    if (navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage({ type: 'TEST_NOTIF' });
+    } else {
+      swReg.active && swReg.active.postMessage({ type: 'TEST_NOTIF' });
+    }
+  } catch (e) {
+    console.warn('Test notif failed', e);
+  }
+}
+
+// Stubs pour compatibilité (le SW gère tout maintenant)
+function startNotifTimer() { sendConfigToSW(); }
+function stopNotifTimer() { sendConfigToSW(); }
+
+// ============ EXPORT ============
+function exportCSV() {
+  const rows = [['Date', 'Heure début', 'Heure fin', 'Catégorie', 'Catégorie maître']];
+  const sorted = [...state.entries].sort((a,b) => a.ts.localeCompare(b.ts));
+  for (const e of sorted) {
+    const cat = state.categories.find(c => c.id === e.categoryId);
+    if (!cat) continue;
+    const master = state.masters.find(m => m.id === cat.masterId);
+    const d = parseSlotKey(e.ts);
+    const end = new Date(d.getTime() + 15*60000);
+    const dateStr = `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+    rows.push([dateStr, fmtTime(d), fmtTime(end), cat.name, master ? master.name : '']);
+  }
+  const csv = '\uFEFF' + rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(';')).join('\r\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `pointage-${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function resetAll() {
+  if (!confirm('Effacer TOUTES les données (pointages, catégories, réglages) ? Irréversible.')) return;
+  if (!confirm('Vraiment sûr ? Cette action est définitive.')) return;
+  try {
+    const keys = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith('tt:')) keys.push(k);
+    }
+    keys.forEach(k => lsDel(k));
+  } catch (e) {}
+  location.reload();
+}
+
+// ============ UTILS ============
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+}
+
+// ============ WIRING ============
+function wireUp() {
+  // Tabs
+  document.querySelectorAll('.tab').forEach(t => {
+    t.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+      document.querySelectorAll('.view').forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+      currentView = t.dataset.view;
+      document.getElementById('view-' + currentView).classList.add('active');
+      render();
+    });
+  });
+  // Range
+  document.querySelectorAll('.range-btn').forEach(b => {
+    b.addEventListener('click', () => {
+      document.querySelectorAll('.range-btn').forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+      currentRange = b.dataset.range;
+      renderStats();
+    });
+  });
+  // Cat modal
+  document.getElementById('catModalClose').addEventListener('click', closeCatModal);
+  document.getElementById('catSave').addEventListener('click', saveCatFromModal);
+  document.getElementById('catDelete').addEventListener('click', deleteCatFromModal);
+  document.getElementById('addCatBtn').addEventListener('click', () => openCatModal());
+  // Master modal
+  document.getElementById('masterModalClose').addEventListener('click', closeMasterModal);
+  document.getElementById('masterSave').addEventListener('click', saveMasterFromModal);
+  document.getElementById('masterDelete').addEventListener('click', deleteMasterFromModal);
+  document.getElementById('addMasterBtn').addEventListener('click', () => openMasterModal());
+  // Backdrop close
+  document.getElementById('catModal').addEventListener('click', e => {
+    if (e.target.id === 'catModal') closeCatModal();
+  });
+  document.getElementById('masterModal').addEventListener('click', e => {
+    if (e.target.id === 'masterModal') closeMasterModal();
+  });
+  const tn = document.getElementById('toggleNotif');
+  if (tn) tn.addEventListener('click', toggleNotifications);
+  const tw2 = document.getElementById('toggleWeekdays');
+  if (tw2) tw2.addEventListener('click', async () => {
+    state.notif.weekdaysOnly = !state.notif.weekdaysOnly;
+    saveNotif();
+    if (state.notif.enabled) sendConfigToSW();
+    render();
+  });
+  document.getElementById('notifStart').addEventListener('change', e => {
+    state.notif.start = e.target.value;
+    saveNotif();
+    if (state.notif.enabled) sendConfigToSW();
+  });
+  document.getElementById('notifEnd').addEventListener('change', e => {
+    state.notif.end = e.target.value;
+    saveNotif();
+    if (state.notif.enabled) sendConfigToSW();
+  });
+  // Export / reset
+  document.getElementById('exportBtn').addEventListener('click', exportCSV);
+  document.getElementById('resetBtn').addEventListener('click', resetAll);
+}
+
+function updateClock() {
+  const d = new Date();
+  document.getElementById('clock').textContent = fmtTime(d);
+  // Also update the current slot if we crossed a 15-min boundary
+  if (currentView === 'track') renderTrack();
+}
+
+// ============ BOOT ============
+(async function init() {
+  await loadState();
+  wireUp();
+  render();
+  updateClock();
+  setInterval(updateClock, 30000);
+  // Enregistrer le Service Worker dès le démarrage
+  await registerSW();
+  // Si notifs déjà activées, envoyer la config au SW
+  if (state.notif.enabled && 'Notification' in window && Notification.permission === 'granted') {
+    sendConfigToSW();
+  } else if (state.notif.enabled) {
+    state.notif.enabled = false;
+    saveNotif();
+  }
+  // Wake up on focus
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+      render();
+      if (state.notif.enabled) sendConfigToSW();
+    }
+  });
+})();
+</script>
+</body>
+</html>
