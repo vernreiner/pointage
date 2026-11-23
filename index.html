@@ -1863,14 +1863,43 @@ function updateClock() {
     state.notif.enabled = false;
     saveNotif();
   }
-  // Wake up on focus
+  // Wake up on focus : catch-up si on vient de se réveiller
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden) {
       render();
-      if (state.notif.enabled) sendConfigToSW();
+      if (state.notif.enabled) {
+        sendConfigToSW();
+        triggerCatchUp();
+      }
     }
   });
+  // Listen for notif click (from SW)
+  if (navigator.serviceWorker) {
+    navigator.serviceWorker.addEventListener('message', (ev) => {
+      const data = ev.data || {};
+      if (data.type === 'NOTIF_CLICKED') {
+        // Switch to Pointer view
+        document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+        document.querySelectorAll('.view').forEach(x => x.classList.remove('active'));
+        const trackTab = document.querySelector('.tab[data-view="track"]');
+        if (trackTab) trackTab.classList.add('active');
+        document.getElementById('view-track').classList.add('active');
+        currentView = 'track';
+        render();
+      }
+    });
+  }
+  // Heartbeat : toutes les minutes quand la page est ouverte, dire au SW de catch-up
+  setInterval(() => {
+    if (!document.hidden && state.notif.enabled) triggerCatchUp();
+  }, 60000);
 })();
+
+function triggerCatchUp() {
+  if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+    navigator.serviceWorker.controller.postMessage({ type: 'CATCHUP' });
+  }
+}
 </script>
 </body>
 </html>
