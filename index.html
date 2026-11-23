@@ -208,18 +208,18 @@ main {
   align-items: flex-start;
 }
 .track-timeline {
-  width: 80px;
+  width: 150px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
   gap: 1px;
   max-height: calc(100vh - 220px);
   overflow-y: auto;
-  padding-right: 2px;
   -webkit-overflow-scrolling: touch;
   scroll-behavior: smooth;
   border-right: 1px solid var(--border);
-  padding-right: 8px;
+  padding-right: 10px;
+  padding-left: 2px;
 }
 .track-main {
   flex: 1;
@@ -228,11 +228,11 @@ main {
 .tl-slot {
   display: flex;
   align-items: center;
-  gap: 5px;
-  padding: 4px 5px;
+  gap: 6px;
+  padding: 5px 6px;
   border-radius: 6px;
-  font-size: 10.5px;
-  line-height: 1.2;
+  font-size: 12px;
+  line-height: 1.25;
   cursor: pointer;
   background: transparent;
   border: none;
@@ -240,7 +240,7 @@ main {
   color: var(--text);
   position: relative;
   -webkit-tap-highlight-color: transparent;
-  min-height: 28px;
+  min-height: 30px;
 }
 .tl-slot:active { background: var(--chrome); }
 .tl-slot.current {
@@ -254,8 +254,9 @@ main {
 .tl-time {
   font-variant-numeric: tabular-nums;
   color: var(--text-muted);
-  font-size: 10px;
-  min-width: 30px;
+  font-size: 11px;
+  min-width: 34px;
+  font-weight: 500;
 }
 .tl-slot.current .tl-time { color: var(--navy); }
 [data-theme="dark"] .tl-slot.current .tl-time { color: var(--navy-300); }
@@ -295,7 +296,7 @@ main {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 10px;
+  font-size: 11.5px;
 }
 .tl-empty {
   color: var(--text-muted);
@@ -1101,11 +1102,11 @@ function renderTimeline() {
     if (d > lastSlot) lastSlot = d;
   });
 
-  // Du plus récent au plus ancien
+  // Du plus ancien (matin) au plus récent (soir)
   const currentKey = slotKey(currentSlot);
   el.innerHTML = '';
   let currentEl = null;
-  for (let d = new Date(lastSlot); d >= rangeStart; d = new Date(d.getTime() - 15*60000)) {
+  for (let d = new Date(rangeStart); d <= lastSlot; d = new Date(d.getTime() + 15*60000)) {
     const key = slotKey(d);
     const entry = entriesBySlot.get(key);
     const isCurrent = key === currentKey;
