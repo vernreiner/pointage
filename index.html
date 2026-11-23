@@ -208,15 +208,18 @@ main {
   align-items: flex-start;
 }
 .track-timeline {
-  width: 72px;
+  width: 80px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  max-height: calc(100vh - 260px);
+  gap: 1px;
+  max-height: calc(100vh - 220px);
   overflow-y: auto;
   padding-right: 2px;
   -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+  border-right: 1px solid var(--border);
+  padding-right: 8px;
 }
 .track-main {
   flex: 1;
@@ -273,6 +276,15 @@ main {
 .tl-dot.current-live {
   box-shadow: 0 0 0 3px rgba(181,24,32,.2);
   animation: pulse 2s infinite;
+}
+.tl-slot.future {
+  opacity: 0.35;
+}
+.tl-dot.future-dot {
+  background: transparent;
+  border: 1px dotted var(--nickel);
+  width: 6px;
+  height: 6px;
 }
 @keyframes pulse {
   0%, 100% { opacity: 1; }
@@ -927,7 +939,7 @@ let state = {
   categories: [],   // {id, name, masterId, color}
   entries: [],      // {id, ts, categoryId}  (ts = ISO slot-start of 15-min)
   lastCategoryId: null,
-  notif: { enabled: false, start: '08:00', end: '19:00', weekdaysOnly: true }
+  notif: { enabled: false, start: '05:00', end: '18:30', weekdaysOnly: true }
 };
 
 let currentView = 'track';
@@ -1070,40 +1082,36 @@ function renderTimeline() {
   });
 
   const [sh, sm] = state.notif.start.split(':').map(Number);
+  const [eh, em] = state.notif.end.split(':').map(Number);
   const now = new Date();
   const currentSlot = slotStart(now);
 
-  const rangeStart = new Date(today);
+  // On affiche TOUTE la plage horaire configurée
+  let rangeStart = new Date(today);
   rangeStart.setHours(sh, sm, 0, 0);
+  let rangeEnd = new Date(today);
+  rangeEnd.setHours(eh, em, 0, 0);
+  // Dernier slot de 15 min dans la plage
+  let lastSlot = new Date(rangeEnd.getTime() - 15*60000);
 
-  // Slot le plus ancien à afficher : min(rangeStart, plus ancien pointage)
-  let earliest = rangeStart;
+  // Étendre si des pointages sortent de la plage
   entriesBySlot.forEach((_, key) => {
     const d = parseSlotKey(key);
-    if (d < earliest) earliest = d;
+    if (d < rangeStart) rangeStart = d;
+    if (d > lastSlot) lastSlot = d;
   });
-
-  // Slot le plus récent à afficher : max(currentSlot, plus récent pointage)
-  let latest = currentSlot;
-  entriesBySlot.forEach((_, key) => {
-    const d = parseSlotKey(key);
-    if (d > latest) latest = d;
-  });
-
-  if (latest < earliest) {
-    el.innerHTML = `<div class="tl-empty">Démarrage…</div>`;
-    return;
-  }
 
   // Du plus récent au plus ancien
   const currentKey = slotKey(currentSlot);
   el.innerHTML = '';
-  for (let d = new Date(latest); d >= earliest; d = new Date(d.getTime() - 15*60000)) {
+  let currentEl = null;
+  for (let d = new Date(lastSlot); d >= rangeStart; d = new Date(d.getTime() - 15*60000)) {
     const key = slotKey(d);
     const entry = entriesBySlot.get(key);
     const isCurrent = key === currentKey;
+    const isFuture = d > currentSlot;
     const btn = document.createElement('button');
-    btn.className = 'tl-slot' + (isCurrent ? ' current' : '');
+    btn.className = 'tl-slot' + (isCurrent ? ' current' : '') + (isFuture ? ' future' : '');
     let dotClass = 'tl-dot';
     let dotStyle = '';
     let label = '';
@@ -1113,6 +1121,9 @@ function renderTimeline() {
         dotStyle = `background:${cat.color}`;
         label = cat.name;
       }
+    } else if (isFuture) {
+      dotClass += ' future-dot';
+      label = '';
     } else {
       dotClass += ' missing';
       label = '—';
@@ -1124,8 +1135,23 @@ function renderTimeline() {
       <span class="tl-label">${escapeHtml(label)}</span>
     `;
     const slotDate = new Date(d);
-    btn.addEventListener('click', () => openBackfillModal(slotDate));
+    // On ne peut pointer que le présent ou le passé
+    if (!isFuture) {
+      btn.addEventListener('click', () => openBackfillModal(slotDate));
+    } else {
+      btn.style.cursor = 'default';
+    }
     el.appendChild(btn);
+    if (isCurrent) currentEl = btn;
+  }
+
+  // Scroll pour centrer le créneau en cours
+  if (currentEl) {
+    requestAnimationFrame(() => {
+      const parent = el;
+      const target = currentEl.offsetTop - parent.clientHeight / 2 + currentEl.clientHeight / 2;
+      parent.scrollTop = Math.max(0, target);
+    });
   }
 }
 
