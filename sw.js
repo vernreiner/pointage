@@ -79,12 +79,13 @@ function fireNotif() {
     ? `Dernière : ${notifConfig.lastCategoryName}. Tape pour pointer ${fmtTime(slot)} → ${fmtTime(next)}.`
     : `Tape pour pointer ${fmtTime(slot)} → ${fmtTime(next)}.`;
 
-  self.registration.showNotification("Qu'est-ce que tu fais ?", {
+  self.registration.showNotification("⏱️ Qu'est-ce que tu fais ?", {
     body: body,
     tag: 'pointage',
     renotify: true,
-    requireInteraction: false,
-    vibrate: [200, 100, 200],
+    requireInteraction: true, // reste à l'écran jusqu'à action
+    vibrate: [300, 100, 300, 100, 300], // vibration longue qui réveille
+    silent: false,
     badge: './icon-192.png',
     icon: './icon-192.png'
   });
@@ -92,9 +93,9 @@ function fireNotif() {
 
 function showTestNotif() {
   self.registration.showNotification("✅ Notifications activées", {
-    body: "Tu recevras un rappel toutes les 15 min pendant ta plage horaire.",
+    body: "Les rappels seront persistants à l'écran, avec son et vibration.",
     tag: 'pointage-test',
-    vibrate: [100, 50, 100],
+    vibrate: [200, 100, 200],
     badge: './icon-192.png',
     icon: './icon-192.png'
   });

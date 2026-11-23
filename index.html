@@ -201,6 +201,98 @@ main {
 }
 .section-title:first-child { margin-top: 0; }
 
+/* Timeline latérale sur Pointer */
+.track-layout {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.track-timeline {
+  width: 72px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: calc(100vh - 260px);
+  overflow-y: auto;
+  padding-right: 2px;
+  -webkit-overflow-scrolling: touch;
+}
+.track-main {
+  flex: 1;
+  min-width: 0;
+}
+.tl-slot {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 5px;
+  border-radius: 6px;
+  font-size: 10.5px;
+  line-height: 1.2;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  text-align: left;
+  color: var(--text);
+  position: relative;
+  -webkit-tap-highlight-color: transparent;
+  min-height: 28px;
+}
+.tl-slot:active { background: var(--chrome); }
+.tl-slot.current {
+  background: var(--navy-100);
+  font-weight: 600;
+}
+[data-theme="dark"] .tl-slot.current { background: var(--navy-700); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .tl-slot.current { background: var(--navy-700); }
+}
+.tl-time {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+  font-size: 10px;
+  min-width: 30px;
+}
+.tl-slot.current .tl-time { color: var(--navy); }
+[data-theme="dark"] .tl-slot.current .tl-time { color: var(--navy-300); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .tl-slot.current .tl-time { color: var(--navy-300); }
+}
+.tl-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--navy);
+  flex-shrink: 0;
+}
+.tl-dot.missing {
+  background: transparent;
+  border: 1.5px dashed var(--nickel);
+}
+.tl-dot.current-live {
+  box-shadow: 0 0 0 3px rgba(181,24,32,.2);
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+.tl-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10px;
+}
+.tl-empty {
+  color: var(--text-muted);
+  font-size: 10px;
+  text-align: center;
+  padding: 10px 4px;
+  font-style: italic;
+}
+
 /* Category grid — 1-tap buttons */
 .cat-grid {
   display: grid;
@@ -667,8 +759,13 @@ main {
         <div class="current-active-text" id="currentActiveText"></div>
       </div>
     </div>
-    <div class="section-title">Tape pour pointer</div>
-    <div class="cat-grid" id="catGrid"></div>
+    <div class="track-layout">
+      <div class="track-timeline" id="trackTimeline"></div>
+      <div class="track-main">
+        <div class="section-title" style="margin-top:0;">Tape pour pointer</div>
+        <div class="cat-grid" id="catGrid"></div>
+      </div>
+    </div>
   </div>
 
   <!-- Today view -->
@@ -759,6 +856,18 @@ main {
     </div>
   </div>
 </main>
+
+<!-- Backfill modal (rattrapage d'un créneau) -->
+<div class="modal-backdrop" id="backfillModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Pointer <span id="backfillSlotLabel"></span></div>
+      <button class="modal-close" id="backfillModalClose">✕</button>
+    </div>
+    <div class="cat-grid" id="backfillGrid"></div>
+    <button class="btn-secondary" id="backfillDelete" style="display:none; margin-top:14px;">Effacer ce pointage</button>
+  </div>
+</div>
 
 <!-- Category modal -->
 <div class="modal-backdrop" id="catModal">
@@ -946,11 +1055,86 @@ function render() {
   else if (currentView === 'settings') renderSettings();
 }
 
+function renderTimeline() {
+  const el = document.getElementById('trackTimeline');
+  if (!el) return;
+
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  const tomorrow = new Date(today.getTime() + 24*60*60000);
+
+  const entriesBySlot = new Map();
+  state.entries.forEach(e => {
+    const d = parseSlotKey(e.ts);
+    if (d >= today && d < tomorrow) entriesBySlot.set(e.ts, e);
+  });
+
+  const [sh, sm] = state.notif.start.split(':').map(Number);
+  const now = new Date();
+  const currentSlot = slotStart(now);
+
+  const rangeStart = new Date(today);
+  rangeStart.setHours(sh, sm, 0, 0);
+
+  // Slot le plus ancien à afficher : min(rangeStart, plus ancien pointage)
+  let earliest = rangeStart;
+  entriesBySlot.forEach((_, key) => {
+    const d = parseSlotKey(key);
+    if (d < earliest) earliest = d;
+  });
+
+  // Slot le plus récent à afficher : max(currentSlot, plus récent pointage)
+  let latest = currentSlot;
+  entriesBySlot.forEach((_, key) => {
+    const d = parseSlotKey(key);
+    if (d > latest) latest = d;
+  });
+
+  if (latest < earliest) {
+    el.innerHTML = `<div class="tl-empty">Démarrage…</div>`;
+    return;
+  }
+
+  // Du plus récent au plus ancien
+  const currentKey = slotKey(currentSlot);
+  el.innerHTML = '';
+  for (let d = new Date(latest); d >= earliest; d = new Date(d.getTime() - 15*60000)) {
+    const key = slotKey(d);
+    const entry = entriesBySlot.get(key);
+    const isCurrent = key === currentKey;
+    const btn = document.createElement('button');
+    btn.className = 'tl-slot' + (isCurrent ? ' current' : '');
+    let dotClass = 'tl-dot';
+    let dotStyle = '';
+    let label = '';
+    if (entry) {
+      const cat = state.categories.find(c => c.id === entry.categoryId);
+      if (cat) {
+        dotStyle = `background:${cat.color}`;
+        label = cat.name;
+      }
+    } else {
+      dotClass += ' missing';
+      label = '—';
+    }
+    if (isCurrent) dotClass += ' current-live';
+    btn.innerHTML = `
+      <span class="tl-time">${fmtTime(d)}</span>
+      <span class="${dotClass}" style="${dotStyle}"></span>
+      <span class="tl-label">${escapeHtml(label)}</span>
+    `;
+    const slotDate = new Date(d);
+    btn.addEventListener('click', () => openBackfillModal(slotDate));
+    el.appendChild(btn);
+  }
+}
+
 function renderTrack() {
   // Current slot
   const slot = slotStart();
   const next = new Date(slot.getTime() + 15*60000);
   document.getElementById('currentSlot').textContent = `${fmtTime(slot)} → ${fmtTime(next)}`;
+  renderTimeline();
   // Current active
   const currentEntry = state.entries.find(e => e.ts === slotKey(slot));
   const activeEl = document.getElementById('currentActive');
@@ -997,37 +1181,164 @@ function renderToday() {
   const today = new Date();
   today.setHours(0,0,0,0);
   const tomorrow = new Date(today.getTime() + 24*60*60000);
-  const todayEntries = state.entries
-    .filter(e => {
-      const d = parseSlotKey(e.ts);
-      return d >= today && d < tomorrow;
-    })
-    .sort((a,b) => b.ts.localeCompare(a.ts));
-  document.getElementById('todayTotal').textContent = fmtDuration(todayEntries.length * 15);
+
+  // Toutes les entrées d'aujourd'hui, indexées par clé de slot
+  const entriesBySlot = new Map();
+  state.entries.forEach(e => {
+    const d = parseSlotKey(e.ts);
+    if (d >= today && d < tomorrow) entriesBySlot.set(e.ts, e);
+  });
+
+  document.getElementById('todayTotal').textContent = fmtDuration(entriesBySlot.size * 15);
+
+  // Construire la liste de tous les slots à afficher : depuis début plage horaire jusqu'au slot actuel
+  const [sh, sm] = state.notif.start.split(':').map(Number);
+  const [eh, em] = state.notif.end.split(':').map(Number);
+  const now = new Date();
+  const currentSlot = slotStart(now);
+
+  const rangeStart = new Date(today);
+  rangeStart.setHours(sh, sm, 0, 0);
+  const rangeEnd = new Date(today);
+  rangeEnd.setHours(eh, em, 0, 0);
+
+  // Slot le plus tardif à afficher : min(currentSlot, rangeEnd - 15min)
+  const lastSlotToShow = currentSlot < rangeEnd ? currentSlot : new Date(rangeEnd.getTime() - 15*60000);
+
+  // Inclure aussi les pointages existants qui seraient hors plage (très tôt, très tard)
+  let earliestShown = rangeStart;
+  entriesBySlot.forEach((_, key) => {
+    const d = parseSlotKey(key);
+    if (d < earliestShown) earliestShown = d;
+  });
+
+  // Et si on a pointé après le lastSlotToShow (hors plage), les inclure aussi
+  let latestShown = lastSlotToShow;
+  entriesBySlot.forEach((_, key) => {
+    const d = parseSlotKey(key);
+    if (d > latestShown) latestShown = d;
+  });
+
+  // Générer la liste complète des slots du plus récent au plus ancien
+  const slots = [];
+  for (let d = new Date(latestShown); d >= earliestShown; d = new Date(d.getTime() - 15*60000)) {
+    slots.push(new Date(d));
+  }
+
   const log = document.getElementById('todayLog');
-  if (todayEntries.length === 0) {
-    log.innerHTML = `<div class="empty-state">Aucun pointage aujourd'hui.<br>Va dans l'onglet <strong>Pointer</strong>.</div>`;
+  log.innerHTML = '';
+
+  if (slots.length === 0) {
+    log.innerHTML = `<div class="empty-state">Pas encore de créneaux à afficher aujourd'hui.</div>`;
     return;
   }
-  log.innerHTML = '';
-  for (const e of todayEntries) {
-    const cat = state.categories.find(c => c.id === e.categoryId);
-    if (!cat) continue;
-    const master = state.masters.find(m => m.id === cat.masterId);
-    const d = parseSlotKey(e.ts);
+
+  // Compter les manquants
+  const missing = slots.filter(s => !entriesBySlot.has(slotKey(s))).length;
+  if (missing > 0) {
+    const banner = document.createElement('div');
+    banner.style.cssText = 'background:var(--navy-100); color:var(--navy); border-radius:10px; padding:10px 14px; font-size:13px; margin-bottom:12px; text-align:center;';
+    banner.innerHTML = `<strong>${missing}</strong> créneau${missing>1?'x':''} manquant${missing>1?'s':''} · tape pour le${missing>1?'s':''} rattraper`;
+    log.appendChild(banner);
+  }
+
+  for (const s of slots) {
+    const key = slotKey(s);
+    const entry = entriesBySlot.get(key);
     const item = document.createElement('div');
     item.className = 'log-item';
-    item.innerHTML = `
-      <div class="log-time">${fmtTime(d)}</div>
-      <div class="log-dot" style="background:${cat.color}"></div>
-      <div class="log-label">${escapeHtml(cat.name)}<span class="log-master">· ${master ? escapeHtml(master.name) : ''}</span></div>
-      <button class="log-del" data-id="${e.id}">✕</button>
-    `;
-    item.querySelector('.log-del').addEventListener('click', () => {
-      if (confirm('Supprimer ce pointage ?')) deleteEntry(e.id);
-    });
+    if (entry) {
+      const cat = state.categories.find(c => c.id === entry.categoryId);
+      if (!cat) continue;
+      const master = state.masters.find(m => m.id === cat.masterId);
+      item.innerHTML = `
+        <div class="log-time">${fmtTime(s)}</div>
+        <div class="log-dot" style="background:${cat.color}"></div>
+        <div class="log-label">${escapeHtml(cat.name)}<span class="log-master">· ${master ? escapeHtml(master.name) : ''}</span></div>
+        <button class="log-del" data-id="${entry.id}">✕</button>
+      `;
+      item.querySelector('.log-del').addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        if (confirm('Supprimer ce pointage ?')) deleteEntry(entry.id);
+      });
+      // Tap sur l'item = modifier la catégorie
+      item.style.cursor = 'pointer';
+      item.addEventListener('click', () => openBackfillModal(s));
+    } else {
+      // Slot manquant
+      item.style.cursor = 'pointer';
+      item.style.opacity = '0.65';
+      item.innerHTML = `
+        <div class="log-time">${fmtTime(s)}</div>
+        <div class="log-dot" style="background:var(--nickel); border:1.5px dashed var(--titanium);"></div>
+        <div class="log-label" style="color:var(--text-muted); font-style:italic;">— manquant —</div>
+        <div style="color:var(--navy-300); font-size:18px; padding-right:4px;">+</div>
+      `;
+      item.addEventListener('click', () => openBackfillModal(s));
+    }
     log.appendChild(item);
   }
+}
+
+// Modal de rattrapage : choisir une catégorie pour un slot donné
+let backfillSlot = null;
+
+function openBackfillModal(slotDate) {
+  backfillSlot = slotDate;
+  const next = new Date(slotDate.getTime() + 15*60000);
+  document.getElementById('backfillSlotLabel').textContent = `${fmtTime(slotDate)} → ${fmtTime(next)}`;
+
+  // Est-ce qu'il y a déjà un pointage ? → afficher bouton supprimer
+  const existingEntry = state.entries.find(e => e.ts === slotKey(slotDate));
+  document.getElementById('backfillDelete').style.display = existingEntry ? 'block' : 'none';
+
+  // Grille de catégories
+  const grid = document.getElementById('backfillGrid');
+  grid.innerHTML = '';
+  const ordered = [...state.categories].sort((a,b) => {
+    if (a.id === state.lastCategoryId) return -1;
+    if (b.id === state.lastCategoryId) return 1;
+    return 0;
+  });
+  for (const cat of ordered) {
+    const master = state.masters.find(m => m.id === cat.masterId);
+    const isSelected = existingEntry && existingEntry.categoryId === cat.id;
+    const btn = document.createElement('button');
+    btn.className = 'cat-btn' + (isSelected ? ' last-used' : '');
+    btn.innerHTML = `
+      <div class="cat-btn-color" style="background:${cat.color}"></div>
+      <div class="cat-btn-name">${escapeHtml(cat.name)}</div>
+      <div class="cat-btn-master">${master ? escapeHtml(master.name) : ''}</div>
+    `;
+    btn.addEventListener('click', () => backfillEntry(cat.id));
+    grid.appendChild(btn);
+  }
+  document.getElementById('backfillModal').classList.add('open');
+}
+
+function closeBackfillModal() {
+  document.getElementById('backfillModal').classList.remove('open');
+  backfillSlot = null;
+}
+
+async function backfillEntry(categoryId) {
+  if (!backfillSlot) return;
+  const key = slotKey(backfillSlot);
+  state.entries = state.entries.filter(e => e.ts !== key);
+  state.entries.push({ id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()), ts: key, categoryId });
+  await saveEntries();
+  closeBackfillModal();
+  render();
+  if (navigator.vibrate) navigator.vibrate(10);
+}
+
+async function backfillDelete() {
+  if (!backfillSlot) return;
+  const key = slotKey(backfillSlot);
+  state.entries = state.entries.filter(e => e.ts !== key);
+  await saveEntries();
+  closeBackfillModal();
+  render();
 }
 
 function getRangeEntries(range) {
@@ -1471,6 +1782,12 @@ function wireUp() {
   });
   document.getElementById('masterModal').addEventListener('click', e => {
     if (e.target.id === 'masterModal') closeMasterModal();
+  });
+  // Backfill modal
+  document.getElementById('backfillModalClose').addEventListener('click', closeBackfillModal);
+  document.getElementById('backfillDelete').addEventListener('click', backfillDelete);
+  document.getElementById('backfillModal').addEventListener('click', e => {
+    if (e.target.id === 'backfillModal') closeBackfillModal();
   });
   const tn = document.getElementById('toggleNotif');
   if (tn) tn.addEventListener('click', toggleNotifications);
